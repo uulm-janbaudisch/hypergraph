@@ -1,0 +1,24 @@
+[workspace]
+members = [
+    "cnf_partitioner",
+    "hypergraph",
+    "hypergraph_formats",
+    "hypergraph_partitioner",
+    "partition_metrics",
+]
+
+resolver = "2"
+
+[workspace.dependencies]
+clap = { version = "4", features = ["derive", "env"] }
+hypergraph = { version = "0.1", path = "hypergraph" }
+hypergraph_formats = { version = "0.1", path = "hypergraph_formats" }
+pretty_env_logger = "0.5"
+
+[profile.release]
+lto = true
+codegen-units = 1
+
+[profile.flamegraph]
+inherits = "release"
+debug = true
