@@ -1,0 +1,27 @@
+[package]
+name = "hypergraph"
+version = "0.1.0"
+description = "A Rust hypergraph implementation with partitioning algorithms."
+build = "build.rs"
+edition = "2021"
+license = "LGPL-3.0"
+authors = ["Jan Baudisch <jan.baudisch@uni-ulm.de>"]
+readme = "../README.md"
+homepage = "https://github.com/uulm-janbaudisch/hypergraph"
+repository = "https://github.com/uulm-janbaudisch/hypergraph.git"
+workspace = ".."
+
+[lib]
+crate-type = ["lib", "staticlib"]
+
+[features]
+formats = ["dep:hypergraph_formats"]
+
+[dependencies]
+bitvec = "1"
+cxx = "1"
+hypergraph_formats = { workspace = true, optional = true }
+rand = "0.9"
+
+[build-dependencies]
+cxx-build = "1"

@@ -1,0 +1,8 @@
+input
+output
+*.aux
+*.log
+*.pdf
+*.png
+*.svg
+*.tex

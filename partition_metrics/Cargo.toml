@@ -1,0 +1,17 @@
+[package]
+name = "partition_metrics"
+version = "0.1.0"
+description = "A tool for calculating metrics on split CNFs."
+edition = "2021"
+license = "LGPL-3.0"
+authors = ["Jan Baudisch <jan.baudisch@uni-ulm.de>"]
+readme = "../README.md"
+homepage = "https://github.com/uulm-janbaudisch/hmetis-tools"
+repository = "https://github.com/uulm-janbaudisch/hmetis-tools.git"
+workspace = ".."
+
+[dependencies]
+clap = { workspace = true }
+dimacs = "0.2"
+hypergraph = { workspace = true }
+hypergraph_formats = { workspace = true, features = ["cnf"] }

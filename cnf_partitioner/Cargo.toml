@@ -1,0 +1,23 @@
+[package]
+name = "cnf_partitioner"
+version = "0.1.0"
+description = "A tool for converting a CNF into a hmetis hypergraph."
+edition = "2021"
+license = "LGPL-3.0"
+authors = ["Jan Baudisch <jan.baudisch@uni-ulm.de>"]
+readme = "../README.md"
+homepage = "https://github.com/uulm-janbaudisch/hmetis-tools"
+repository = "https://github.com/uulm-janbaudisch/hmetis-tools.git"
+workspace = ".."
+
+[dependencies]
+cadical = "0.1"
+clap = { workspace = true }
+dimacs = "0.2"
+hypergraph = { workspace = true }
+hypergraph_formats = { workspace = true, features = ["cnf"] }
+log = "0.4"
+num = "0.4"
+pretty_env_logger = { workspace = true }
+strum = { version = "0.26", features = ["derive"] }
+tempfile = "3"
