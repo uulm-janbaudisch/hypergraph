@@ -28,33 +28,50 @@ impl ParsableHMETIS for Graph {
         ))(input)?;
 
         let nets = nets.into_iter().map(Net).collect();
-        Ok((input, Graph { header, nets }))
+        Ok((
+            input,
+            Graph {
+                header,
+                nets,
+                vertex_weights: Vec::new(),
+                net_weights: Vec::new(),
+            },
+        ))
     }
 }
 
 impl SerializeHMETIS for Net {
     fn serialize_hmetis(&self, output: &mut String) {
-        let last = self.0.len() - 1;
-        self.0.iter().enumerate().for_each(|(i, vertex)| {
-            output.push_str(vertex.to_string().as_str());
-
-            // All but the last vertex should have a space appended as a separator.
-            if i != last {
-                output.push(' ');
-            }
-        });
-
-        output.push('\n');
+        output.push_str(&self.to_string());
     }
 }
 
 impl SerializeHMETIS for Graph {
     fn serialize_hmetis(&self, output: &mut String) {
+        let serialize_vertex_weights = self.header.format.contains_vertex_weights();
+        let serialize_net_weights = self.header.format.contains_net_weights();
+
         self.header.serialize_hmetis(output);
+
         output.push('\n');
-        self.nets
-            .iter()
-            .for_each(|net| net.serialize_hmetis(output));
+        self.nets.iter().enumerate().for_each(|(index, net)| {
+            // Optionally serialize the net weights.
+            if serialize_net_weights {
+                output.push_str(&self.net_weights[index].to_string());
+                output.push(' ');
+            }
+
+            net.serialize_hmetis(output);
+            output.push('\n');
+        });
+
+        // Optionally serialize the vertex weights.
+        if serialize_vertex_weights {
+            self.vertex_weights.iter().for_each(|weight| {
+                output.push_str(&weight.to_string());
+                output.push('\n');
+            });
+        }
     }
 }
 
@@ -62,6 +79,32 @@ impl SerializeHMETIS for Graph {
 mod test {
     use crate::hmetis::{FromStringHMETIS, ToStringHMETIS};
     use crate::{Format, Graph, Header, Net};
+
+    fn graph_unweighted() -> Graph {
+        Graph {
+            header: Header {
+                num_nets: 4,
+                num_vertices: 7,
+                format: Format::Unweighted,
+                one_indexed: true,
+            },
+            nets: vec![
+                Net(vec![1, 2]),
+                Net(vec![1, 7, 5, 6]),
+                Net(vec![5, 6, 4]),
+                Net(vec![2, 3, 4]),
+            ],
+            vertex_weights: vec![],
+            net_weights: vec![],
+        }
+    }
+
+    fn graph_vertex_weights() -> Graph {
+        let mut graph = graph_unweighted();
+        graph.header.format = Format::VertexWeights;
+        graph.vertex_weights = vec![1, 5, 2, 2, 2, 1, 3];
+        graph
+    }
 
     #[test]
     fn parse_unweighted() {
@@ -78,19 +121,7 @@ mod test {
 
         assert_eq!(
             Graph::from_string_hmetis(input).unwrap(),
-            Graph {
-                header: Header {
-                    num_nets: 4,
-                    num_vertices: 7,
-                    format: Format::Unweighted,
-                },
-                nets: vec![
-                    Net(vec![1, 2]),
-                    Net(vec![1, 7, 5, 6]),
-                    Net(vec![5, 6, 4]),
-                    Net(vec![2, 3, 4])
-                ],
-            }
+            graph_unweighted()
         );
     }
 
@@ -103,22 +134,25 @@ mod test {
 2 3 4
 "#;
 
-        assert_eq!(
-            Graph {
-                header: Header {
-                    num_nets: 4,
-                    num_vertices: 7,
-                    format: Format::Unweighted,
-                },
-                nets: vec![
-                    Net(vec![1, 2]),
-                    Net(vec![1, 7, 5, 6]),
-                    Net(vec![5, 6, 4]),
-                    Net(vec![2, 3, 4])
-                ],
-            }
-            .to_string_hmetis(),
-            expected
-        );
+        assert_eq!(graph_unweighted().to_string_hmetis(), expected);
+    }
+
+    #[test]
+    fn serialize_vertex_weighted() {
+        let expected = r#"4 7 10
+1 2
+1 7 5 6
+5 6 4
+2 3 4
+1
+5
+2
+2
+2
+1
+3
+"#;
+
+        assert_eq!(graph_vertex_weights().to_string_hmetis(), expected);
     }
 }

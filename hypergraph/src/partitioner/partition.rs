@@ -7,6 +7,7 @@ use std::str::FromStr;
 /// The result of a partitioner, mapping of vertices to a block.
 ///
 /// Entry `i` indicates the block that vertex `i` is in.
+#[derive(Debug)]
 pub struct Partition(Vec<usize>);
 
 impl Partition {

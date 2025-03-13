@@ -11,8 +11,10 @@ repository = "https://github.com/uulm-janbaudisch/hypergraph.git"
 workspace = ".."
 
 [features]
-cnf = ["dep:dimacs"]
+cnf = ["dep:dimacs", "dep:clap", "dep:strum"]
 
 [dependencies]
-nom = "7"
+clap = { workspace = true, optional = true }
 dimacs = { version = "0.2", optional = true }
+nom = "7"
+strum = { version = "0.26", features = ["derive"], optional = true }

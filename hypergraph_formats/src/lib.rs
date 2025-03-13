@@ -3,7 +3,7 @@
 //! Each component implements `ToString<format>` and `FromString<formt>` to serialize and parse it.
 
 #[cfg(feature = "cnf")]
-mod cnf;
+pub mod cnf;
 mod format;
 mod graph;
 mod header;
@@ -15,7 +15,7 @@ pub mod hmetis;
 pub mod patoh;
 
 pub use format::Format;
-pub use graph::{Graph, Net, Vertex};
+pub use graph::{Graph, Net, NetIndex, VertexIndex, Weight};
 pub use header::Header;
 use nom::bytes::complete::take_while;
 use nom::combinator::map_res;

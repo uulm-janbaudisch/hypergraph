@@ -73,12 +73,6 @@ impl Partitioner for KaHyPar {
     }
 
     fn serialize_graph(&self, graph: &Graph) -> String {
-        let mut graph = graph.clone();
-
-        // KaHyPar fails to handle indices starting at 0 ...
-        graph.move_indices(1);
-
-        // ... and newlines at the end of the input file.
         graph.to_string_hmetis().trim_end().into()
     }
 

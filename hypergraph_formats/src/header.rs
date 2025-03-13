@@ -9,4 +9,6 @@ pub struct Header {
     pub num_vertices: usize,
     /// The type of hypergraph in regard to it having net and/or vertex weights.
     pub format: Format,
+    /// Whether the indexing of vertices starts at `1` instead of `0`.
+    pub one_indexed: bool,
 }

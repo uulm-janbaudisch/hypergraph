@@ -1,3 +1,4 @@
+use hypergraph_formats::cnf::VariableHeuristic;
 use num::BigInt;
 
 /// A collection of run results being this programs output.
@@ -33,6 +34,7 @@ impl Output {
 pub struct Run {
     instance: String,
     partitioner: String,
+    variable_heuristic: VariableHeuristic,
     blocks: usize,
     cut_size: usize,
     time_partitioning: u128,
@@ -49,6 +51,7 @@ impl Run {
     pub fn new(
         instance: String,
         partitioner: &str,
+        variable_heuristic: VariableHeuristic,
         blocks: usize,
         cut_size: usize,
         time_original: u128,
@@ -60,6 +63,7 @@ impl Run {
         Self {
             instance,
             partitioner: String::from(partitioner),
+            variable_heuristic,
             blocks,
             cut_size,
             time_original,
@@ -88,15 +92,16 @@ impl Run {
 
     /// The output CSV header describing the contents of runs.
     pub const fn csv_header() -> &'static str {
-        "instance,partitioner,blocks,cut_size,time_original,time_conditioned,count_original,count_conditioned,time_split,time_sum,time_partitioning"
+        "instance,partitioner,heuristic,blocks,cut_size,time_original,time_conditioned,count_original,count_conditioned,time_split,time_sum,time_partitioning"
     }
 
     /// Serializes a run into a CSV row.
     pub fn csv(&self, output: &mut String) {
         output.push_str(&format!(
-            "{},{},{},{},{},{},{},{},{},{},{}",
+            "{},{},{},{},{},{},{},{},{},{},{},{}",
             self.instance,
             self.partitioner,
+            self.variable_heuristic,
             self.blocks,
             self.cut_size,
             self.time_original,

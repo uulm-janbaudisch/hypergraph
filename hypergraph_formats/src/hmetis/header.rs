@@ -21,6 +21,7 @@ impl ParsableHMETIS for Header {
                 num_nets,
                 num_vertices,
                 format,
+                one_indexed: true,
             },
         ))
     }

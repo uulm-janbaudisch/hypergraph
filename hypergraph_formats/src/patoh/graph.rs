@@ -1,32 +1,48 @@
 use super::SerializePATOH;
-use crate::{Graph, Net};
+use crate::{Format, Graph, Net};
 
 impl SerializePATOH for Net {
     fn serialize_patoh(&self, output: &mut String) {
-        let last = self.0.len() - 1;
-        self.0.iter().enumerate().for_each(|(i, vertex)| {
-            output.push_str(vertex.to_string().as_str());
-
-            // All but the last vertex should have a space appended as a separator.
-            if i != last {
-                output.push(' ');
-            }
-        });
-
-        output.push('\n');
+        output.push_str(&self.to_string());
     }
 }
 
 impl SerializePATOH for Graph {
     fn serialize_patoh(&self, output: &mut String) {
+        let serialize_vertex_weights = self.header.format.contains_vertex_weights();
+        let serialize_net_weights = self.header.format.contains_net_weights();
+
         self.header.serialize_patoh(output);
 
         // The pin count can only be calculated by the graph itself.
         output.push(' ');
         output.push_str(&self.pin_count().to_string());
+
+        if self.header.format != Format::Unweighted {
+            output.push(' ');
+            self.header.format.serialize_patoh(output);
+        }
+
         output.push('\n');
 
-        self.nets.iter().for_each(|net| net.serialize_patoh(output));
+        self.nets.iter().enumerate().for_each(|(index, net)| {
+            // Optionally serialize the net weights.
+            if serialize_net_weights {
+                output.push_str(&self.net_weights[index].to_string());
+                output.push(' ');
+            }
+
+            net.serialize_patoh(output);
+            output.push('\n');
+        });
+
+        // Optionally serialize the vertex weights.
+        if serialize_vertex_weights {
+            self.vertex_weights.iter().for_each(|weight| {
+                output.push_str(&weight.to_string());
+                output.push('\n');
+            });
+        }
     }
 }
 
@@ -49,12 +65,15 @@ mod test {
                     num_nets: 3,
                     num_vertices: 10,
                     format: Format::Unweighted,
+                    one_indexed: false,
                 },
                 nets: vec![
                     Net(vec![2, 3, 5, 6, 9]),
                     Net(vec![0, 1]),
                     Net(vec![0, 1, 2, 3]),
                 ],
+                vertex_weights: vec![],
+                net_weights: vec![],
             }
             .to_string_patoh(),
             expected

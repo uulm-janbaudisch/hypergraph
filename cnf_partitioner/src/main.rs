@@ -11,6 +11,9 @@ use clap::Parser;
 use d4::D4;
 use dimacs::parse_dimacs;
 use hypergraph::Partition;
+use hypergraph_formats::cnf::VariableHeuristic;
+use hypergraph_formats::hmetis::ToStringHMETIS;
+use hypergraph_formats::patoh::ToStringPATOH;
 use hypergraph_formats::Graph;
 use log::{info, LevelFilter};
 use num::BigInt;
@@ -50,6 +53,11 @@ struct Args {
     /// `file.txt` becomes `file.txt.<partitioner>`
     #[arg(long, env)]
     save_partitions: Option<PathBuf>,
+
+    /// Variable heuristics to use for weighting the hypergraph.
+    /// Will create an additional run per partitioner and heuristic.
+    #[arg(long, env)]
+    heuristics: Vec<VariableHeuristic>,
 
     /// Whether to skip running d4 on the original instance.
     /// If specified, the output will contain 0s for values on the original instance.
@@ -197,89 +205,105 @@ fn main() -> io::Result<()> {
             .expect("Failed to compile CNF.")
     };
 
-    // Transform it into a dual hypergraph.
-    let graph = Graph::from(&cnf).dual();
+    // We will do at least a single pass per partitioner using no heuristic but applying unit weights
+    // for each variable.
+    let mut heuristics = vec![VariableHeuristic::None];
+    heuristics.append(&mut args.heuristics.clone());
 
+    // Do a run per partitioner ...
     for partitioner in &partitioners {
-        // Generate the partition.
-        let (partitioning_time, partition) =
-            partitioner.run(&graph).expect("Failed to run partitioner");
+        // ... and per heuristic.
+        for &heuristic in &heuristics {
+            info!("Using the {} heuristic.", heuristic);
 
-        // Save the partition if requested.
-        if let Some(path) = &args.save_partitions.clone().map(|path| {
-            let mut path = path.into_os_string();
-            path.push(".");
-            path.push(partitioner.name_short());
-            path
-        }) {
-            fs::write(path, partition.to_string()).expect("Failed to save partition.");
-        };
+            // Transform the CNF into a dual hypergraph.
+            let graph = Graph::from((&cnf, heuristic)).dual();
 
-        // Split the original CNF into the respective CNFs as defined by the partition.
-        let cnfs = split_cnf(&partition, &cnf);
+            // Generate the partition.
+            let (partitioning_time, partition) =
+                partitioner.run(&graph).expect("Failed to run partitioner");
 
-        // Calculate the cut set.
-        let cut = get_cut_variables(&cnfs);
-        info!("{} cut size: {}", partitioner.name_full(), cut.len());
+            // Save the partition if requested.
+            if let Some(path) = &args.save_partitions.clone().map(|path| {
+                let mut path = path.into_os_string();
+                path.push(".");
+                path.push(partitioner.name_short());
+                path.push(".");
+                path.push(heuristic.to_string());
+                path
+            }) {
+                fs::write(path, partition.to_string()).expect("Failed to save partition.");
+            };
 
-        // Find an assignment that splits the CNFs.
-        let assignment = find_assignment(&cnf, &cut);
+            // Split the original CNF into the respective CNFs as defined by the partition.
+            let cnfs = split_cnf(&partition, &cnf);
 
-        // Run d4 on the original instance with the assignment.
-        let (conditioned_time, conditioned_count) = {
-            let conditioned_cnf = condition_instance(&cnf, &assignment);
+            // Calculate the cut set.
+            let cut = get_cut_variables(&cnfs);
+            info!("{} cut size: {}", partitioner.name_full(), cut.len());
 
-            // Write it to a temporary file.
-            let mut file = NamedTempFile::new().expect("Failed to create temporary file for CNF.");
-            file.write_all(serialize_cnf(&conditioned_cnf).as_bytes())
-                .expect("Failed to write CNF.");
+            // Find an assignment that splits the CNFs.
+            let assignment = find_assignment(&cnf, &cut);
 
-            info!("Running d4 on the original CNF with the split assignment.");
+            // Run d4 on the original instance with the assignment.
+            let (conditioned_time, conditioned_count) = {
+                let conditioned_cnf = condition_instance(&cnf, &assignment);
 
-            // Compile the CNF using d4.
-            d4.compile(file.into_temp_path().to_path_buf(), None)
-                .expect("Failed to compile CNF.")
-        };
+                // Write it to a temporary file.
+                let mut file =
+                    NamedTempFile::new().expect("Failed to create temporary file for CNF.");
+                file.write_all(serialize_cnf(&conditioned_cnf).as_bytes())
+                    .expect("Failed to write CNF.");
 
-        // Condition the CNFs on the assignment.
-        let cnfs = cnfs.iter().map(|cnf| condition_instance(cnf, &assignment));
+                info!("Running d4 on the original CNF with the split assignment.");
 
-        let mut run = Run::new(
-            args.input
-                .file_stem()
-                .expect("Failed to extract input file stem.")
-                .to_str()
-                .expect("Failed to convert input file name to string.")
-                .to_string(),
-            partitioner.name_short(),
-            partitioner.blocks(),
-            cut.len(),
-            original_time,
-            original_count.clone(),
-            conditioned_time,
-            conditioned_count,
-            partitioning_time,
-        );
+                // Compile the CNF using d4.
+                d4.compile(file.into_temp_path().to_path_buf(), None)
+                    .expect("Failed to compile CNF.")
+            };
 
-        info!("Running d4 on each split CNF.");
+            // Condition the CNFs on the assignment.
+            let cnfs = cnfs.iter().map(|cnf| condition_instance(cnf, &assignment));
 
-        // Solve each split CNF.
-        cnfs.for_each(|cnf| {
-            // Write it to a temporary file.
-            let mut file = NamedTempFile::new().expect("Failed to create temporary file for CNF.");
-            file.write_all(serialize_cnf(&cnf).as_bytes())
-                .expect("Failed to write CNF.");
+            let mut run = Run::new(
+                args.input
+                    .file_stem()
+                    .expect("Failed to extract input file stem.")
+                    .to_str()
+                    .expect("Failed to convert input file name to string.")
+                    .to_string(),
+                partitioner.name_short(),
+                heuristic,
+                partitioner.blocks(),
+                cut.len(),
+                original_time,
+                original_count.clone(),
+                conditioned_time,
+                conditioned_count,
+                partitioning_time,
+            );
 
-            // Compile the CNF using d4.
-            let (time, count) = d4
-                .compile(file.into_temp_path().to_path_buf(), args.timeout)
-                .expect("Failed to compile CNF.");
+            info!("Running d4 on each split CNF.");
 
-            run.add_part(time, count);
-        });
+            // Solve each split CNF.
+            cnfs.for_each(|cnf| {
+                // Write it to a temporary file.
+                let mut file =
+                    NamedTempFile::new().expect("Failed to create temporary file for CNF.");
+                file.write_all(serialize_cnf(&cnf).as_bytes())
+                    .expect("Failed to write CNF.");
 
-        run.check();
-        output.add(run);
+                // Compile the CNF using d4.
+                let (time, count) = d4
+                    .compile(file.into_temp_path().to_path_buf(), args.timeout)
+                    .expect("Failed to compile CNF.");
+
+                run.add_part(time, count);
+            });
+
+            run.check();
+            output.add(run);
+        }
     }
 
     // Print the results of this file.
