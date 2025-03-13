@@ -73,6 +73,8 @@ impl Partitioner for KaHyPar {
     }
 
     fn serialize_graph(&self, graph: &Graph) -> String {
+        let mut graph = graph.clone();
+        graph.trim();
         graph.to_string_hmetis().trim_end().into()
     }
 

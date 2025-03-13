@@ -189,7 +189,7 @@ impl From<(&Instance, VariableHeuristic)> for Graph {
         let vertex_weights = weights
             .iter()
             // Calculate the ratio of any given weight to the maximum one.
-/*            .map(|&weight| weight as f64 / *max_weight as f64)
+            /*            .map(|&weight| weight as f64 / *max_weight as f64)
             // Scale the weight using this ratio relative to the maximum possible weight.
             .map(|ratio| {
                 let weight = (Weight::MAX as f64 * ratio) as Weight;
@@ -199,7 +199,7 @@ impl From<(&Instance, VariableHeuristic)> for Graph {
                 let weight_adapted = Weight::MAX - weight as Weight;
                 weight_adapted
             })
-            .map(|weight| if weight == 0 {1} else {weight})
+            .map(|weight| if weight == 0 { 1 } else { weight })
             .collect();
 
         Graph {

@@ -1,5 +1,5 @@
 use crate::Header;
-use std::collections::{BTreeMap, BTreeSet, VecDeque};
+use std::collections::{BTreeSet, VecDeque};
 use std::fmt::Display;
 use std::iter;
 
@@ -54,6 +54,48 @@ pub struct Graph {
 }
 
 impl Graph {
+    /// Removes empty nets and their weights.
+    pub fn trim(&mut self) {
+        let empty_nets: BTreeSet<usize> = self
+            .nets
+            .iter()
+            .enumerate()
+            .filter_map(|(index, net)| if net.is_empty() { Some(index) } else { None })
+            .collect();
+
+        self.nets = self
+            .nets
+            .iter()
+            .enumerate()
+            .filter_map(|(index, net)| {
+                if empty_nets.contains(&index) {
+                    None
+                } else {
+                    Some(net)
+                }
+            })
+            .cloned()
+            .collect();
+
+        if !self.header.format.contains_net_weights() {
+            return;
+        }
+
+        self.net_weights = self
+            .net_weights
+            .iter()
+            .enumerate()
+            .filter_map(|(index, weight)| {
+                if empty_nets.contains(&index) {
+                    None
+                } else {
+                    Some(weight)
+                }
+            })
+            .copied()
+            .collect();
+    }
+
     /// Creates the corresponding dual hypergraph.
     ///
     /// Vertices become nets containing their pins.
