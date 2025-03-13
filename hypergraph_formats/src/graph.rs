@@ -1,5 +1,5 @@
 use crate::Header;
-use std::collections::{BTreeSet, VecDeque};
+use std::collections::BTreeSet;
 use std::fmt::Display;
 use std::iter;
 
@@ -160,26 +160,6 @@ impl Graph {
             // ... only taking those that were not seen before.
             .filter(move |&&vertex| vertices.insert(vertex))
     }
-
-    /// Move all vertex indices of the hypergraph by the given amount.
-    ///
-    /// Also increases the number of vertices and shifts the vertex weights according if present.
-    pub fn move_indices(&mut self, step: isize) {
-        self.nets.iter_mut().for_each(|net| {
-            net.0.iter_mut().for_each(|vertex| {
-                *vertex = vertex.saturating_add_signed(step);
-            })
-        });
-
-        self.header.num_vertices += step as usize;
-
-        // Insert vertex weights (0) for the vertices created.
-        if self.header.format.contains_vertex_weights() {
-            let mut queue = VecDeque::from(self.vertex_weights.clone());
-            (0..step).for_each(|_| queue.push_front(0));
-            self.vertex_weights = Vec::from(queue);
-        }
-    }
 }
 
 #[cfg(test)]
@@ -224,17 +204,5 @@ mod test {
 
         assert_eq!(primal.dual(), dual);
         assert_eq!(primal.dual().dual(), primal);
-    }
-
-    #[test]
-    fn move_indices_unweighted() {
-        let mut moved = graph();
-        moved.move_indices(1);
-
-        let mut expected = graph();
-        expected.header.num_vertices = 5;
-        expected.nets = vec![Net(vec![1, 2]), Net(vec![2, 3, 4]), Net(vec![1, 4])];
-
-        assert_eq!(moved, expected);
     }
 }
